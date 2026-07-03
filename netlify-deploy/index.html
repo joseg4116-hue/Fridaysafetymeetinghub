@@ -515,18 +515,33 @@ async function approveMeeting(){
     statusEl.style.color = 'var(--nm)';
     return;
   }
+
+  // Open the print window now, synchronously in the click handler, so
+  // browsers don't treat it as an unrequested pop-up once we hit the
+  // `await` below.
+  const printWin = window.open('', '_blank');
+
   statusEl.textContent = 'Approving…';
   statusEl.style.color = 'var(--text-muted)';
-  const { error } = await sb.from(TABLE)
+  const { data, error } = await sb.from(TABLE)
     .update({ status: 'approved', approved_at: new Date().toISOString() })
-    .eq('id', currentDraftId);
+    .eq('id', currentDraftId)
+    .select()
+    .single();
   if(error){
     console.error(error);
+    if(printWin) printWin.close();
     statusEl.textContent = 'Approval failed — check console';
     statusEl.style.color = 'var(--nm)';
     return;
   }
-  alert('Meeting approved and moved to History.');
+
+  if(printWin){
+    printMeetingInWindow(printWin, data);
+  } else {
+    alert('Meeting approved and moved to History. Allow pop-ups to auto-print next time.');
+  }
+
   currentDraftId = null;
   currentDraftStatus = null;
   document.getElementById('mtg-date').valueAsDate = new Date();
@@ -600,12 +615,12 @@ function formatDate(d){
   return dt.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 }
 
-function downloadMeetingPDF(m){
+function buildMeetingPrintHtml(m){
   const tl = (m.tl_items||[]).map(it=>`<div class="agenda-item"><span class="agenda-dot dot-tl"></span><div><div class="agenda-text">${escapeHtml(it.text)}</div><span class="agenda-who">Team Lead</span></div></div>`).join("");
   const ft = (m.ft_items||[]).map(it=>`<div class="agenda-item"><span class="agenda-dot dot-ft"></span><div><div class="agenda-text">${escapeHtml(it.text)}</div><span class="agenda-who">Field Team</span></div></div>`).join("");
   const nm = (m.nm_items||[]).map(it=>`<div class="agenda-item"><span class="agenda-dot dot-nm"></span><div><div class="agenda-text">${escapeHtml(it.text)}${it.fileUrl ? ` — <a href="${it.fileUrl}">${escapeHtml(it.fileName||'attachment.pdf')}</a>` : ''}</div><span class="agenda-who">Near miss</span></div></div>`).join("");
   const title = escapeHtml(formatDate(m.meeting_date)) + (m.safety_topic ? ' — ' + escapeHtml(m.safety_topic) : '');
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
 <style>
   body{font-family:Arial,sans-serif;color:#1F2420;padding:24px;max-width:720px;margin:0 auto}
   h1{font-size:18px;margin-bottom:4px}
@@ -628,12 +643,19 @@ function downloadMeetingPDF(m){
   ${m.assignments ? `<div class="section-label">Assignments</div><div class="body-text">${escapeHtml(m.assignments)}</div>` : ''}
   ${m.notes ? `<div class="section-label">Notes</div><div class="body-text">${escapeHtml(m.notes)}</div>` : ''}
 </body></html>`;
-  const win = window.open('', '_blank');
-  if(!win){ alert('Please allow pop-ups to download the PDF.'); return; }
-  win.document.write(html);
+}
+
+function printMeetingInWindow(win, m){
+  win.document.write(buildMeetingPrintHtml(m));
   win.document.close();
   win.focus();
   setTimeout(()=>win.print(), 250);
+}
+
+function downloadMeetingPDF(m){
+  const win = window.open('', '_blank');
+  if(!win){ alert('Please allow pop-ups to download the PDF.'); return; }
+  printMeetingInWindow(win, m);
 }
 
 // Init
