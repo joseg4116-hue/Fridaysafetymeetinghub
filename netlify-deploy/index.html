@@ -595,6 +595,7 @@ function renderHistory(){
           </div>
           <div class="history-actions no-print">
             <button class="btn btn-sm" onclick="event.stopPropagation(); downloadMeetingPDF(historyCache[${i}])">Download PDF</button>
+            <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteMeeting(historyCache[${i}])">Delete</button>
             <span class="chevron" id="chev-${i}">▾</span>
           </div>
         </div>
@@ -697,6 +698,24 @@ function downloadMeetingPDF(m){
   const win = window.open('', '_blank');
   if(!win){ alert('Please allow pop-ups to download the PDF.'); return; }
   printMeetingInWindow(win, m);
+}
+
+async function deleteMeeting(m){
+  const label = `${formatDate(m.meeting_date)}${m.safety_topic ? ' — ' + m.safety_topic : ''}`;
+  if(!confirm(`Delete "${label}" from history? This can't be undone.`)) return;
+  const pin = prompt('Enter approval PIN to delete:');
+  if(pin === null) return;
+  if(pin !== APPROVAL_PIN){
+    alert('Incorrect PIN');
+    return;
+  }
+  const { error } = await sb.from(TABLE).delete().eq('id', m.id);
+  if(error){
+    console.error(error);
+    alert('Delete failed — check console');
+    return;
+  }
+  loadHistory();
 }
 
 // Init
