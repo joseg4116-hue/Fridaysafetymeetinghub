@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <rect width="256" height="256" rx="48" fill="#C6541E"/>
+  <!-- hard hat -->
+  <path d="M60 172 h136 a8 8 0 0 0 8-8 v-4 a8 8 0 0 0-8-8 H60 a8 8 0 0 0-8 8 v4 a8 8 0 0 0 8 8 Z" fill="#F7F5F1"/>
+  <path d="M72 152 c0-42 25-70 56-70 s56 28 56 70 Z" fill="#F7F5F1"/>
+  <rect x="118" y="86" width="20" height="34" rx="4" fill="#C6541E"/>
+</svg>

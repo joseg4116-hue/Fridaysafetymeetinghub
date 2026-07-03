@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DTEC Friday Safety Meeting Hub</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --charcoal:#2D2926;
+  --charcoal-light:#3A3530;
+  --bg:#EBEBEB;
+  --card:#FFFFFF;
+  --border:#D8D5D0;
+  --border-strong:#ABA398;
+  --text:#1E1B18;
+  --text-secondary:#5A5550;
+  --text-muted:#8A8579;
+  --text-subtle:#B8B0A8;
+  --accent:#C9B10A;
+  --accent-dark:#A38F08;
+  --tl:#0C447C;
+  --tl-bg:#E7F0FA;
+  --ft:#085041;
+  --ft-bg:#E1F5EE;
+  --nm:#791F1F;
+  --nm-bg:#FCEBEB;
+  --radius:14px;
+  --font-heading:Georgia,"Times New Roman",serif;
+  font-family:Calibri,"Trebuchet MS",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);}
+.hub{max-width:820px;margin:0 auto;padding:24px 20px 80px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+
+.site-header{background:var(--charcoal)}
+.site-header-inner{max-width:820px;margin:0 auto;padding:20px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.site-title{font-family:var(--font-heading);font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.01em}
+.site-subtitle{font-size:12px;color:var(--text-subtle);margin-top:2px}
+.site-logo-link{flex-shrink:0;line-height:0}
+.site-logo{height:36px;width:auto;display:block}
+.conn-bar{background:var(--charcoal-light);padding:6px 20px;text-align:center}
+.conn-bar-inner{max-width:820px;margin:0 auto;font-size:11px;color:var(--text-subtle)}
+
+.tabs{display:flex;gap:4px;margin-top:18px;margin-bottom:18px;border-bottom:1px solid var(--border)}
+.tab{appearance:none;border:none;background:none;padding:9px 14px;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
+.tab.active{color:var(--text);border-bottom-color:var(--accent)}
+
+.panel{display:none}
+.panel.active{display:block}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;box-shadow:0 1px 2px rgba(45,41,38,0.05)}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px}
+label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px}
+input[type=text],input[type=date],textarea{
+  width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;
+  font-size:14px;font-family:inherit;background:#fff;color:var(--text)
+}
+textarea{min-height:70px;resize:vertical}
+input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+
+.btn{appearance:none;border:1px solid var(--border-strong);background:#fff;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text)}
+.btn:hover{background:#F1EFEC}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:disabled:hover{background:#fff}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-primary{background:var(--charcoal);border-color:var(--charcoal);color:#fff}
+.btn-primary:hover{background:var(--charcoal-light)}
+.btn-danger{color:var(--nm)}
+
+.item-row{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px}
+.item-row input{flex:1}
+.item-who{width:120px;flex:none}
+.remove-x{border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:4px 6px;line-height:1}
+.remove-x:hover{color:var(--nm)}
+
+.standing-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border);font-size:13px;color:var(--text-secondary)}
+.standing-item:last-child{border-bottom:none}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);flex-shrink:0}
+.dot-share{background:var(--accent)}
+
+.save-bar{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:6px}
+.save-status{font-size:12px;color:var(--text-muted)}
+
+.draft-notice{margin-top:10px;padding:8px 10px;background:var(--nm-bg);color:var(--nm);border-radius:8px;font-size:12px}
+.approve-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.approve-btn{background:var(--accent);border-color:var(--accent-dark);color:var(--text)}
+.approve-btn:hover:not(:disabled){background:var(--accent-dark);color:#fff}
+.approve-btn.is-approved{background:var(--ft-bg);border-color:var(--ft);color:var(--ft)}
+.approve-btn.is-approved:hover{background:var(--ft-bg);color:var(--ft)}
+.history-actions{display:flex;align-items:center;gap:10px}
+
+/* History tab */
+.search-row{margin-bottom:14px}
+.history-item{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;cursor:pointer}
+.history-head{display:flex;justify-content:space-between;align-items:center}
+.history-date{font-weight:700;font-size:15px;font-family:var(--font-heading)}
+.history-presenter{font-size:12px;color:var(--text-muted)}
+.chevron{font-size:12px;color:var(--text-muted);transition:transform .15s}
+.chevron.open{transform:rotate(180deg)}
+.history-body{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.history-body.open{display:block}
+.agenda-item{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;font-size:13px}
+.agenda-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.dot-tl{background:var(--tl)}
+.dot-ft{background:var(--ft)}
+.dot-nm{background:var(--nm)}
+.agenda-text{color:var(--text)}
+.agenda-who{font-size:11px;color:var(--text-muted)}
+.badge-tl{background:var(--tl-bg);color:var(--tl);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px}
+.badge-ft{background:var(--ft-bg);color:var(--ft);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px}
+.nm-badge{background:var(--nm-bg);color:var(--nm);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px}
+.empty{text-align:center;padding:2rem;color:var(--text-muted);font-size:14px}
+
+.no-print{}
+.print-content{display:none}
+@media print{
+  .no-print{display:none!important}
+  .print-content{display:block!important}
+  body{background:#fff;color:#000;font-family:Arial,sans-serif}
+  .hub{max-width:100%;padding:0}
+}
+</style>
+</head>
+<body>
+<header class="site-header no-print">
+  <div class="site-header-inner">
+    <div>
+      <div class="site-title">Friday Safety Meeting Hub</div>
+      <div class="site-subtitle">Colorado Erosion Control &amp; Stormwater Management</div>
+    </div>
+    <a href="https://trustdtec.com" target="_blank" rel="noopener noreferrer" class="site-logo-link">
+      <img src="dtec-logo.png" alt="DTEC logo" class="site-logo" />
+    </a>
+  </div>
+</header>
+<div class="conn-bar no-print">
+  <div class="conn-bar-inner" id="conn-status">Connecting…</div>
+</div>
+
+<div class="hub">
+  <h2 class="sr-only">DTEC Friday Safety Meeting Hub</h2>
+
+  <div class="tabs no-print">
+    <button class="tab active" data-tab="agenda" onclick="switchTab('agenda')">Agenda Builder</button>
+    <button class="tab" data-tab="history" onclick="switchTab('history')">Meeting History</button>
+  </div>
+
+  <!-- AGENDA BUILDER -->
+  <div id="panel-agenda" class="panel active">
+
+    <div class="card">
+      <div class="section-label">Meeting Info</div>
+      <div class="field-row">
+        <div><label>Date</label><input type="date" id="mtg-date" /></div>
+        <div><label>Presenter</label><input type="text" id="mtg-presenter" /></div>
+      </div>
+      <div><label>Safety topic this week</label><input type="text" id="mtg-safety-topic" placeholder="e.g. Heat illness prevention, Pinch points…" /></div>
+      <div id="draft-notice" class="draft-notice" style="display:none"></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-label" style="margin-bottom:0">Team Lead topics</div>
+        <button class="btn btn-sm" onclick="addItem('tl')">+ Add</button>
+      </div>
+      <div id="tl-items"></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-label" style="margin-bottom:0">Field team topics</div>
+        <button class="btn btn-sm" onclick="addItem('ft')">+ Add</button>
+      </div>
+      <div id="ft-items"></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-label" style="margin-bottom:0">Near miss / Safety incident report</div>
+        <button class="btn btn-sm" onclick="addNearMiss()">⚠ Add</button>
+      </div>
+      <div id="nm-items"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Previous meeting review</div>
+      <textarea id="mtg-prev-review" placeholder="What did we discuss last week?"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Birthdays / Anniversaries</div>
+      <textarea id="mtg-birthdays" placeholder="Names and dates to shout out this week…" style="min-height:50px"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Assignments / follow-ups from this meeting</div>
+      <textarea id="mtg-assignments"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Notes</div>
+      <textarea id="mtg-notes" placeholder="Anything else worth recording…"></textarea>
+    </div>
+
+    <div class="save-bar no-print">
+      <span class="save-status" id="save-status"></span>
+      <button class="btn" onclick="window.print()">Save as PDF</button>
+      <button class="btn btn-primary" onclick="saveMeeting()">Save draft</button>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Approval</div>
+      <div class="approve-row">
+        <button class="btn approve-btn" id="approve-btn" onclick="approveMeeting()">Approve &amp; move to History</button>
+        <span class="save-status" id="approve-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEETING HISTORY -->
+  <div id="panel-history" class="panel">
+    <div class="search-row no-print">
+      <input type="text" id="history-search" placeholder="Search past meetings (topic, name, keyword)…" oninput="renderHistory()" />
+    </div>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://rmtmpzkejkobngsefpws.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtdG1wemtlamtvYm5nc2VmcHdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5NDYyNDksImV4cCI6MjA5ODUyMjI0OX0.MJUkB0CyJcZNyBBDW1EcVJzsdnLeeEvmf98UvgGWgZc";
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const TABLE = "safety_meetings";
+const APPROVAL_PIN = "2026!";
+
+let tlCount = 0, ftCount = 0, nmCount = 0;
+let historyCache = [];
+let currentDraftId = null;
+let currentDraftStatus = null;
+
+function switchTab(name){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.tab===name));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  document.getElementById("panel-"+name).classList.add("active");
+  if(name === "history") loadHistory();
+}
+
+function itemRow(container, idPrefix, count){
+  const row = document.createElement("div");
+  row.className = "item-row";
+  row.dataset.id = idPrefix + count;
+  row.innerHTML = `
+    <input type="text" placeholder="Topic…" />
+    <button class="remove-x" onclick="this.parentElement.remove()">×</button>
+  `;
+  container.appendChild(row);
+}
+
+function addItem(kind){
+  if(kind === 'tl'){
+    itemRow(document.getElementById('tl-items'), 'tl', tlCount++);
+  } else {
+    itemRow(document.getElementById('ft-items'), 'ft', ftCount++);
+  }
+}
+
+function addNearMiss(){
+  const container = document.getElementById('nm-items');
+  const row = document.createElement("div");
+  row.className = "item-row";
+  row.style.flexDirection = "column";
+  row.style.alignItems = "stretch";
+  row.style.border = "1px solid var(--border)";
+  row.style.borderRadius = "8px";
+  row.style.padding = "10px";
+  row.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:flex-start">
+      <textarea placeholder="Describe the near miss or incident, project/site, and corrective action…" style="min-height:50px"></textarea>
+      <button class="remove-x" onclick="this.parentElement.parentElement.remove()">×</button>
+    </div>
+    <div style="margin-top:8px">
+      <label style="margin-bottom:4px">Attach PDF (optional)</label>
+      <input type="file" class="nm-file" accept="application/pdf" style="font-size:12px" />
+      <div class="nm-file-status" style="font-size:11px;color:var(--text-muted);margin-top:4px"></div>
+    </div>
+  `;
+  container.appendChild(row);
+  nmCount++;
+}
+
+function collectItems(containerId){
+  const rows = document.querySelectorAll(`#${containerId} .item-row`);
+  const out = [];
+  rows.forEach(r=>{
+    const textEl = r.querySelector('input[type=text], textarea');
+    const text = textEl ? textEl.value.trim() : "";
+    if(!text) return;
+    out.push({ text });
+  });
+  return out;
+}
+
+async function collectNearMiss(){
+  const rows = document.querySelectorAll('#nm-items .item-row');
+  const out = [];
+  for(const r of rows){
+    const text = r.querySelector('textarea')?.value.trim() || "";
+    const fileInput = r.querySelector('.nm-file');
+    const statusEl = r.querySelector('.nm-file-status');
+    if(!text && !(fileInput && fileInput.files[0])) continue;
+    let fileUrl = null, fileName = null;
+    if(fileInput && fileInput.files[0]){
+      const file = fileInput.files[0];
+      fileName = `${Date.now()}-${file.name}`.replace(/\s+/g,'_');
+      if(statusEl) statusEl.textContent = "Uploading…";
+      const { error: upErr } = await sb.storage.from('near-miss-attachments').upload(fileName, file, { upsert: true });
+      if(upErr){
+        console.error(upErr);
+        if(statusEl) statusEl.textContent = "Upload failed — check console";
+      } else {
+        const { data: pub } = sb.storage.from('near-miss-attachments').getPublicUrl(fileName);
+        fileUrl = pub?.publicUrl || null;
+        if(statusEl) statusEl.textContent = "Uploaded ✓";
+      }
+    }
+    out.push({ text, fileUrl, fileName: fileInput?.files[0]?.name || null });
+  }
+  return out;
+}
+
+function clearForm(){
+  document.getElementById('mtg-date').value = "";
+  document.getElementById('mtg-presenter').value = "";
+  document.getElementById('mtg-safety-topic').value = "";
+  document.getElementById('mtg-prev-review').value = "";
+  document.getElementById('mtg-birthdays').value = "";
+  document.getElementById('mtg-assignments').value = "";
+  document.getElementById('mtg-notes').value = "";
+  document.getElementById('tl-items').innerHTML = "";
+  document.getElementById('ft-items').innerHTML = "";
+  document.getElementById('nm-items').innerHTML = "";
+}
+
+async function saveMeeting(){
+  const status = document.getElementById('save-status');
+  const date = document.getElementById('mtg-date').value;
+  if(!date){
+    status.textContent = "Add a date first";
+    status.style.color = "var(--nm)";
+    return;
+  }
+  if(currentDraftStatus === 'approved'){
+    status.textContent = "This meeting is already approved — pick a different date to start a new draft";
+    status.style.color = "var(--nm)";
+    return;
+  }
+  status.textContent = "Saving…";
+  status.style.color = "var(--text-muted)";
+  const nmItems = await collectNearMiss();
+  const payload = {
+    meeting_date: date,
+    presenter: document.getElementById('mtg-presenter').value.trim(),
+    safety_topic: document.getElementById('mtg-safety-topic').value.trim(),
+    prev_review: document.getElementById('mtg-prev-review').value.trim(),
+    birthdays: document.getElementById('mtg-birthdays').value.trim(),
+    tl_items: collectItems('tl-items'),
+    ft_items: collectItems('ft-items'),
+    nm_items: nmItems,
+    assignments: document.getElementById('mtg-assignments').value.trim(),
+    notes: document.getElementById('mtg-notes').value.trim(),
+  };
+  let error;
+  if(currentDraftId){
+    ({ error } = await sb.from(TABLE).update(payload).eq('id', currentDraftId));
+  } else {
+    payload.status = 'draft';
+    const { data, error: insErr } = await sb.from(TABLE).insert(payload).select().single();
+    error = insErr;
+    if(!error && data){
+      currentDraftId = data.id;
+      currentDraftStatus = 'draft';
+    }
+  }
+  if(error){
+    console.error(error);
+    status.textContent = "Save failed — check console";
+    status.style.color = "var(--nm)";
+    return;
+  }
+  status.textContent = "Draft saved ✓";
+  status.style.color = "var(--ft)";
+  setTimeout(()=>{ status.textContent = ""; }, 3000);
+  renderApprovalCard();
+}
+
+async function loadDraftForDate(date){
+  if(!date) return;
+  const noticeEl = document.getElementById('draft-notice');
+  let data, error;
+  try{
+    ({ data, error } = await sb.from(TABLE)
+      .select('*')
+      .eq('meeting_date', date)
+      .order('created_at', { ascending: false })
+      .limit(1));
+  } catch(e){
+    error = e;
+  }
+  if(error){
+    console.error(error);
+    clearForm();
+    tlCount = ftCount = nmCount = 0;
+    document.getElementById('mtg-date').value = date;
+    currentDraftId = null;
+    currentDraftStatus = null;
+    noticeEl.style.display = 'none';
+    addItem('tl'); addItem('tl');
+    addItem('ft'); addItem('ft');
+    renderApprovalCard();
+    return;
+  }
+  const row = data && data[0];
+
+  clearForm();
+  tlCount = ftCount = nmCount = 0;
+  document.getElementById('mtg-date').value = date;
+
+  if(!row){
+    currentDraftId = null;
+    currentDraftStatus = null;
+    noticeEl.style.display = 'none';
+    addItem('tl'); addItem('tl');
+    addItem('ft'); addItem('ft');
+    renderApprovalCard();
+    return;
+  }
+
+  currentDraftId = row.id;
+  currentDraftStatus = row.status;
+
+  if(row.status === 'approved'){
+    noticeEl.textContent = 'This date already has an approved meeting in History. Pick a different date to start a new draft.';
+    noticeEl.style.display = 'block';
+  } else {
+    noticeEl.style.display = 'none';
+  }
+
+  document.getElementById('mtg-presenter').value = row.presenter || '';
+  document.getElementById('mtg-safety-topic').value = row.safety_topic || '';
+  document.getElementById('mtg-prev-review').value = row.prev_review || '';
+  document.getElementById('mtg-birthdays').value = row.birthdays || '';
+  document.getElementById('mtg-assignments').value = row.assignments || '';
+  document.getElementById('mtg-notes').value = row.notes || '';
+
+  (row.tl_items||[]).forEach(it=>{
+    addItem('tl');
+    const rows = document.querySelectorAll('#tl-items .item-row');
+    rows[rows.length-1].querySelector('input').value = it.text || '';
+  });
+  (row.ft_items||[]).forEach(it=>{
+    addItem('ft');
+    const rows = document.querySelectorAll('#ft-items .item-row');
+    rows[rows.length-1].querySelector('input').value = it.text || '';
+  });
+  (row.nm_items||[]).forEach(it=>{
+    addNearMiss();
+    const rows = document.querySelectorAll('#nm-items .item-row');
+    const last = rows[rows.length-1];
+    last.querySelector('textarea').value = it.text || '';
+    if(it.fileUrl) last.querySelector('.nm-file-status').textContent = `Attached: ${it.fileName || 'file'} (uploaded)`;
+  });
+
+  if(document.querySelectorAll('#tl-items .item-row').length === 0){ addItem('tl'); addItem('tl'); }
+  if(document.querySelectorAll('#ft-items .item-row').length === 0){ addItem('ft'); addItem('ft'); }
+
+  renderApprovalCard();
+}
+
+function renderApprovalCard(){
+  const btn = document.getElementById('approve-btn');
+  const statusEl = document.getElementById('approve-status');
+  if(currentDraftStatus === 'approved'){
+    btn.disabled = true;
+    btn.classList.add('is-approved');
+    btn.textContent = '✓ Approved';
+    statusEl.textContent = '';
+  } else if(!currentDraftId){
+    btn.disabled = true;
+    btn.classList.remove('is-approved');
+    btn.textContent = 'Approve & move to History';
+    statusEl.textContent = 'Save the draft first';
+    statusEl.style.color = 'var(--text-muted)';
+  } else {
+    btn.disabled = false;
+    btn.classList.remove('is-approved');
+    btn.textContent = 'Approve & move to History';
+    statusEl.textContent = '';
+  }
+}
+
+async function approveMeeting(){
+  const statusEl = document.getElementById('approve-status');
+  if(!currentDraftId){
+    statusEl.textContent = 'Save the draft first';
+    statusEl.style.color = 'var(--nm)';
+    return;
+  }
+  const pin = prompt('Enter approval PIN:');
+  if(pin === null) return;
+  if(pin !== APPROVAL_PIN){
+    statusEl.textContent = 'Incorrect PIN';
+    statusEl.style.color = 'var(--nm)';
+    return;
+  }
+  statusEl.textContent = 'Approving…';
+  statusEl.style.color = 'var(--text-muted)';
+  const { error } = await sb.from(TABLE)
+    .update({ status: 'approved', approved_at: new Date().toISOString() })
+    .eq('id', currentDraftId);
+  if(error){
+    console.error(error);
+    statusEl.textContent = 'Approval failed — check console';
+    statusEl.style.color = 'var(--nm)';
+    return;
+  }
+  alert('Meeting approved and moved to History.');
+  currentDraftId = null;
+  currentDraftStatus = null;
+  document.getElementById('mtg-date').valueAsDate = new Date();
+  await loadDraftForDate(document.getElementById('mtg-date').value);
+}
+
+async function loadHistory(){
+  const list = document.getElementById('history-list');
+  list.innerHTML = `<div class="empty">Loading…</div>`;
+  const { data, error } = await sb.from(TABLE).select('*').eq('status', 'approved').order('meeting_date', { ascending: false });
+  if(error){
+    list.innerHTML = `<div class="empty">Couldn't load history — check console</div>`;
+    console.error(error);
+    return;
+  }
+  historyCache = data || [];
+  renderHistory();
+}
+
+function renderHistory(){
+  const q = (document.getElementById('history-search')?.value || "").toLowerCase();
+  const list = document.getElementById('history-list');
+  let items = historyCache;
+  if(q){
+    items = items.filter(m => JSON.stringify(m).toLowerCase().includes(q));
+  }
+  if(items.length === 0){
+    list.innerHTML = `<div class="empty">No meetings found</div>`;
+    return;
+  }
+  list.innerHTML = items.map((m, i) => {
+    const tl = (m.tl_items||[]).map(it=>`<div class="agenda-item"><span class="agenda-dot dot-tl"></span><div><div class="agenda-text">${escapeHtml(it.text)}</div><span class="agenda-who badge-tl">Team Lead</span></div></div>`).join("");
+    const ft = (m.ft_items||[]).map(it=>`<div class="agenda-item"><span class="agenda-dot dot-ft"></span><div><div class="agenda-text">${escapeHtml(it.text)}</div><span class="agenda-who badge-ft">Field Team</span></div></div>`).join("");
+    const nm = (m.nm_items||[]).map(it=>`<div class="agenda-item"><span class="agenda-dot dot-nm"></span><div><div class="agenda-text">${escapeHtml(it.text)}${it.fileUrl ? ` — <a href="${it.fileUrl}" target="_blank" rel="noopener">${escapeHtml(it.fileName||'attachment.pdf')}</a>` : ''}</div><span class="agenda-who nm-badge">Near miss</span></div></div>`).join("");
+    return `
+      <div class="history-item">
+        <div class="history-head" onclick="toggleHistory(${i})">
+          <div>
+            <div class="history-date">${formatDate(m.meeting_date)} ${m.safety_topic ? '— ' + escapeHtml(m.safety_topic) : ''}</div>
+            <div class="history-presenter">${escapeHtml(m.presenter||'')}</div>
+          </div>
+          <div class="history-actions no-print">
+            <button class="btn btn-sm" onclick="event.stopPropagation(); downloadMeetingPDF(historyCache[${i}])">Download PDF</button>
+            <span class="chevron" id="chev-${i}">▾</span>
+          </div>
+        </div>
+        <div class="history-body" id="body-${i}">
+          ${m.prev_review ? `<div class="section-label">Previous meeting review</div><div style="font-size:13px;margin-bottom:8px">${escapeHtml(m.prev_review)}</div>` : ''}
+          ${m.birthdays ? `<div class="section-label">Birthdays / Anniversaries</div><div style="font-size:13px;margin-bottom:8px">${escapeHtml(m.birthdays)}</div>` : ''}
+          ${tl}${ft}${nm}
+          ${m.assignments ? `<div class="section-label" style="margin-top:10px">Assignments</div><div style="font-size:13px">${escapeHtml(m.assignments)}</div>` : ''}
+          ${m.notes ? `<div class="section-label" style="margin-top:10px">Notes</div><div style="font-size:13px">${escapeHtml(m.notes)}</div>` : ''}
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function toggleHistory(i){
+  document.getElementById(`body-${i}`).classList.toggle('open');
+  document.getElementById(`chev-${i}`).classList.toggle('open');
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str || "";
+  return d.innerHTML;
+}
+function formatDate(d){
+  if(!d) return "";
+  const dt = new Date(d + "T00:00:00");
+  return dt.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+function downloadMeetingPDF(m){
+  const tl = (m.tl_items||[]).map(it=>`<div class="agenda-item"><span class="agenda-dot dot-tl"></span><div><div class="agenda-text">${escapeHtml(it.text)}</div><span class="agenda-who">Team Lead</span></div></div>`).join("");
+  const ft = (m.ft_items||[]).map(it=>`<div class="agenda-item"><span class="agenda-dot dot-ft"></span><div><div class="agenda-text">${escapeHtml(it.text)}</div><span class="agenda-who">Field Team</span></div></div>`).join("");
+  const nm = (m.nm_items||[]).map(it=>`<div class="agenda-item"><span class="agenda-dot dot-nm"></span><div><div class="agenda-text">${escapeHtml(it.text)}${it.fileUrl ? ` — <a href="${it.fileUrl}">${escapeHtml(it.fileName||'attachment.pdf')}</a>` : ''}</div><span class="agenda-who">Near miss</span></div></div>`).join("");
+  const title = escapeHtml(formatDate(m.meeting_date)) + (m.safety_topic ? ' — ' + escapeHtml(m.safety_topic) : '');
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
+<style>
+  body{font-family:Arial,sans-serif;color:#1F2420;padding:24px;max-width:720px;margin:0 auto}
+  h1{font-size:18px;margin-bottom:4px}
+  .meta{font-size:12px;color:#4B564D;margin-bottom:16px}
+  .section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8A8F86;margin:16px 0 6px}
+  .agenda-item{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;font-size:13px}
+  .agenda-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0}
+  .dot-tl{background:#0C447C} .dot-ft{background:#085041} .dot-nm{background:#791F1F}
+  .agenda-who{font-size:11px;color:#8A8F86;display:block}
+  .body-text{font-size:13px;white-space:pre-wrap}
+</style>
+</head><body>
+  <h1>${title}</h1>
+  <div class="meta">Presenter: ${escapeHtml(m.presenter||'—')}</div>
+  ${m.prev_review ? `<div class="section-label">Previous meeting review</div><div class="body-text">${escapeHtml(m.prev_review)}</div>` : ''}
+  ${m.birthdays ? `<div class="section-label">Birthdays / Anniversaries</div><div class="body-text">${escapeHtml(m.birthdays)}</div>` : ''}
+  ${tl ? `<div class="section-label">Team Lead topics</div>${tl}` : ''}
+  ${ft ? `<div class="section-label">Field team topics</div>${ft}` : ''}
+  ${nm ? `<div class="section-label">Near miss / Safety incident report</div>${nm}` : ''}
+  ${m.assignments ? `<div class="section-label">Assignments</div><div class="body-text">${escapeHtml(m.assignments)}</div>` : ''}
+  ${m.notes ? `<div class="section-label">Notes</div><div class="body-text">${escapeHtml(m.notes)}</div>` : ''}
+</body></html>`;
+  const win = window.open('', '_blank');
+  if(!win){ alert('Please allow pop-ups to download the PDF.'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(()=>win.print(), 250);
+}
+
+// Init
+document.getElementById('mtg-date').valueAsDate = new Date();
+document.getElementById('mtg-date').addEventListener('change', (e)=> loadDraftForDate(e.target.value));
+loadDraftForDate(document.getElementById('mtg-date').value);
+
+(async function checkConn(){
+  const statusEl = document.getElementById('conn-status');
+  const { error } = await sb.from(TABLE).select('id').limit(1);
+  if(error){
+    statusEl.textContent = "⚠ DB not connected — run supabase-setup.sql";
+    statusEl.style.color = "var(--nm)";
+  } else {
+    statusEl.textContent = "Connected";
+    statusEl.style.color = "var(--ft)";
+  }
+})();
+</script>
+</body>
+</html>
