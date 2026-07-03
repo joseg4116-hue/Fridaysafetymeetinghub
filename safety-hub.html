@@ -236,6 +236,16 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const TABLE = "safety_meetings";
 const APPROVAL_PIN = "2026!";
 
+const ROSTER_NAMES = [
+  "Joel Alas", "Alberto Chavira", "Ashley Johnson", "Bernardo Puentes Ochoa",
+  "Brando Romero", "Chris Cervantes", "Felipe Casales Regalado", "Jaime Hernandez",
+  "Javier Lopez", "Joel Jonker", "Jon Kool", "Jose Cervantes", "Jose Guevara",
+  "Jose Puentes", "Juan Anacleto", "Juan Lopez", "Keith Bol", "Maria Montoya",
+  "Noel Pizana Hernandez", "Onesimo Olguin", "Omar Pliego Vergara", "Oscar Meza",
+  "Paulino Juarez", "Pedro Valenzuela", "Ricardo Ornelas Venzor", "Rick Schmitt",
+  "Rogelio Gonzalez", "Terrald Kling", "Tony Saldana",
+];
+
 let tlCount = 0, ftCount = 0, nmCount = 0;
 let historyCache = [];
 let currentDraftId = null;
@@ -537,9 +547,9 @@ async function approveMeeting(){
   }
 
   if(printWin){
-    printMeetingInWindow(printWin, data);
+    printRosterInWindow(printWin, data.meeting_date);
   } else {
-    alert('Meeting approved and moved to History. Allow pop-ups to auto-print next time.');
+    alert('Meeting approved and moved to History. Allow pop-ups to auto-print the sign-in roster next time.');
   }
 
   currentDraftId = null;
@@ -647,6 +657,37 @@ function buildMeetingPrintHtml(m){
 
 function printMeetingInWindow(win, m){
   win.document.write(buildMeetingPrintHtml(m));
+  win.document.close();
+  win.focus();
+  setTimeout(()=>win.print(), 250);
+}
+
+function formatDateSlash(d){
+  if(!d) return "";
+  const dt = new Date(d + "T00:00:00");
+  return `${dt.getMonth()+1}/${dt.getDate()}/${dt.getFullYear()}`;
+}
+
+function buildRosterPrintHtml(meetingDate){
+  const rows = ROSTER_NAMES.map(n=>`<div class="row">${escapeHtml(n)}</div>`).join("");
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Safety Meeting Roster ${escapeHtml(formatDateSlash(meetingDate))}</title>
+<style>
+  body{font-family:Arial,sans-serif;color:#000;padding:40px;max-width:700px;margin:0 auto}
+  .banner{background:#DCEAF6;padding:14px;text-align:center;font-size:20px;font-weight:700;margin-bottom:6px}
+  .date{text-align:center;font-size:16px;font-weight:700;margin-bottom:18px}
+  .col-header{font-weight:700;font-size:13px;border-bottom:1px solid #000;padding-bottom:4px;margin-bottom:2px}
+  .row{font-size:13px;padding:11px 2px;border-bottom:1px solid #000}
+</style>
+</head><body>
+  <div class="banner">Safety Meeting Roster</div>
+  <div class="date">${escapeHtml(formatDateSlash(meetingDate))}</div>
+  <div class="col-header">Name</div>
+  ${rows}
+</body></html>`;
+}
+
+function printRosterInWindow(win, meetingDate){
+  win.document.write(buildRosterPrintHtml(meetingDate));
   win.document.close();
   win.focus();
   setTimeout(()=>win.print(), 250);
