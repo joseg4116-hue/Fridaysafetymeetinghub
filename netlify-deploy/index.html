@@ -114,6 +114,22 @@ input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
 .nm-badge{background:var(--nm-bg);color:var(--nm);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px}
 .empty{text-align:center;padding:2rem;color:var(--text-muted);font-size:14px}
 
+/* Presentations tab */
+.drop-zone{border:2px dashed var(--border-strong);border-radius:var(--radius);padding:22px;text-align:center;background:#fff;color:var(--text-secondary);font-size:13px;cursor:pointer}
+.drop-zone.drag{border-color:var(--accent);background:#FBF8E1}
+.drop-zone strong{color:var(--text)}
+.upload-row{display:flex;gap:8px;align-items:center;padding:6px 0;font-size:12px;color:var(--text-secondary);border-bottom:0.5px solid var(--border)}
+.upload-row:last-child{border-bottom:none}
+.upload-row .u-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pres-item{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pres-icon{width:36px;height:36px;border-radius:8px;background:#FBEAE3;color:#B7472A;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pres-main{flex:1;min-width:180px}
+.pres-title{font-weight:700;font-size:14px;font-family:var(--font-heading)}
+.pres-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
+.pres-desc{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.pres-actions{display:flex;gap:6px;flex-wrap:wrap}
+a.btn{text-decoration:none;display:inline-block}
+
 .no-print{}
 .print-content{display:none}
 @media print{
@@ -145,6 +161,7 @@ input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
   <div class="tabs no-print">
     <button class="tab active" data-tab="agenda" onclick="switchTab('agenda')">Agenda Builder</button>
     <button class="tab" data-tab="history" onclick="switchTab('history')">Meeting History</button>
+    <button class="tab" data-tab="presentations" onclick="switchTab('presentations')">Presentations</button>
   </div>
 
   <!-- AGENDA BUILDER -->
@@ -226,6 +243,23 @@ input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
     </div>
     <div id="history-list"></div>
   </div>
+
+  <!-- PRESENTATIONS -->
+  <div id="panel-presentations" class="panel">
+    <div class="card no-print">
+      <div class="section-label">Add presentations</div>
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('pres-file').click()">
+        <strong>Click to choose PowerPoint files</strong> or drag them here<br>
+        <span style="font-size:11px;color:var(--text-muted)">.pptx / .ppt / .pps / .ppsx — select as many as you like (max 50 MB each)</span>
+      </div>
+      <input type="file" id="pres-file" multiple accept=".ppt,.pptx,.pps,.ppsx" class="sr-only" onchange="uploadPresentations(this.files); this.value=''" />
+      <div id="upload-list" style="margin-top:8px"></div>
+    </div>
+    <div class="search-row no-print">
+      <input type="text" id="pres-search" placeholder="Search presentations…" oninput="renderPresentations()" />
+    </div>
+    <div id="pres-list"></div>
+  </div>
 </div>
 
 <script>
@@ -235,16 +269,6 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const TABLE = "safety_meetings";
 const APPROVAL_PIN = "2026!";
-
-const ROSTER_NAMES = [
-  "Joel Alas", "Alberto Chavira", "Ashley Johnson", "Bernardo Puentes Ochoa",
-  "Brando Romero", "Chris Cervantes", "Felipe Casales Regalado", "Jaime Hernandez",
-  "Javier Lopez", "Joel Jonker", "Jon Kool", "Jose Cervantes", "Jose Guevara",
-  "Jose Puentes", "Juan Anacleto", "Juan Lopez", "Keith Bol", "Maria Montoya",
-  "Noel Pizana Hernandez", "Onesimo Olguin", "Omar Pliego Vergara", "Oscar Meza",
-  "Paulino Juarez", "Pedro Valenzuela", "Ricardo Ornelas Venzor", "Rick Schmitt",
-  "Rogelio Gonzalez", "Terrald Kling", "Tony Saldana",
-];
 
 let tlCount = 0, ftCount = 0, nmCount = 0;
 let historyCache = [];
@@ -256,6 +280,7 @@ function switchTab(name){
   document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
   document.getElementById("panel-"+name).classList.add("active");
   if(name === "history") loadHistory();
+  if(name === "presentations") loadPresentations();
 }
 
 function itemRow(container, idPrefix, count){
@@ -526,30 +551,16 @@ async function approveMeeting(){
     return;
   }
 
-  // Open the print window now, synchronously in the click handler, so
-  // browsers don't treat it as an unrequested pop-up once we hit the
-  // `await` below.
-  const printWin = window.open('', '_blank');
-
   statusEl.textContent = 'Approving…';
   statusEl.style.color = 'var(--text-muted)';
-  const { data, error } = await sb.from(TABLE)
+  const { error } = await sb.from(TABLE)
     .update({ status: 'approved', approved_at: new Date().toISOString() })
-    .eq('id', currentDraftId)
-    .select()
-    .single();
+    .eq('id', currentDraftId);
   if(error){
     console.error(error);
-    if(printWin) printWin.close();
     statusEl.textContent = 'Approval failed — check console';
     statusEl.style.color = 'var(--nm)';
     return;
-  }
-
-  if(printWin){
-    printRosterInWindow(printWin, data.meeting_date);
-  } else {
-    alert('Meeting approved and moved to History. Allow pop-ups to auto-print the sign-in roster next time.');
   }
 
   currentDraftId = null;
@@ -663,37 +674,6 @@ function printMeetingInWindow(win, m){
   setTimeout(()=>win.print(), 250);
 }
 
-function formatDateSlash(d){
-  if(!d) return "";
-  const dt = new Date(d + "T00:00:00");
-  return `${dt.getMonth()+1}/${dt.getDate()}/${dt.getFullYear()}`;
-}
-
-function buildRosterPrintHtml(meetingDate){
-  const rows = ROSTER_NAMES.map(n=>`<div class="row">${escapeHtml(n)}</div>`).join("");
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Safety Meeting Roster ${escapeHtml(formatDateSlash(meetingDate))}</title>
-<style>
-  body{font-family:Arial,sans-serif;color:#000;padding:40px;max-width:700px;margin:0 auto}
-  .banner{background:#DCEAF6;padding:14px;text-align:center;font-size:20px;font-weight:700;margin-bottom:6px}
-  .date{text-align:center;font-size:16px;font-weight:700;margin-bottom:18px}
-  .col-header{font-weight:700;font-size:13px;border-bottom:1px solid #000;padding-bottom:4px;margin-bottom:2px}
-  .row{font-size:13px;padding:11px 2px;border-bottom:1px solid #000}
-</style>
-</head><body>
-  <div class="banner">Safety Meeting Roster</div>
-  <div class="date">${escapeHtml(formatDateSlash(meetingDate))}</div>
-  <div class="col-header">Name</div>
-  ${rows}
-</body></html>`;
-}
-
-function printRosterInWindow(win, meetingDate){
-  win.document.write(buildRosterPrintHtml(meetingDate));
-  win.document.close();
-  win.focus();
-  setTimeout(()=>win.print(), 250);
-}
-
 function downloadMeetingPDF(m){
   const win = window.open('', '_blank');
   if(!win){ alert('Please allow pop-ups to download the PDF.'); return; }
@@ -717,6 +697,136 @@ async function deleteMeeting(m){
   }
   loadHistory();
 }
+
+// ---------- Presentations ----------
+const PRES_TABLE = "presentations";
+const PRES_BUCKET = "presentations";
+const PRES_MAX_BYTES = 50 * 1024 * 1024;
+let presCache = [];
+
+function formatSize(b){
+  if(!b) return "";
+  return b >= 1048576 ? (b/1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b/1024)) + " KB";
+}
+function titleFromFile(name){
+  return name.replace(/\.[^.]+$/, "").replace(/_+/g, " ").trim();
+}
+
+async function uploadPresentations(fileList){
+  const files = Array.from(fileList || []);
+  if(!files.length) return;
+  const listEl = document.getElementById('upload-list');
+  let added = 0;
+  for(const file of files){
+    const row = document.createElement('div');
+    row.className = 'upload-row';
+    row.innerHTML = `<span class="u-name">${escapeHtml(file.name)}</span><span class="u-status">Uploading…</span>`;
+    listEl.appendChild(row);
+    const statusEl = row.querySelector('.u-status');
+    const fail = msg => { statusEl.textContent = msg; statusEl.style.color = 'var(--nm)'; };
+
+    if(!/\.(pptx?|ppsx?)$/i.test(file.name)){ fail('Not a PowerPoint file'); continue; }
+    if(file.size > PRES_MAX_BYTES){ fail('Over 50 MB'); continue; }
+
+    const safeName = file.name.replace(/[^A-Za-z0-9._-]+/g, '_');
+    const path = `${Date.now()}-${safeName}`;
+    const { error: upErr } = await sb.storage.from(PRES_BUCKET).upload(path, file, { upsert: false });
+    if(upErr){ console.error(upErr); fail('Upload failed — check console'); continue; }
+    const { data: pub } = sb.storage.from(PRES_BUCKET).getPublicUrl(path);
+    const { error: dbErr } = await sb.from(PRES_TABLE).insert({
+      title: titleFromFile(file.name),
+      file_name: file.name,
+      storage_path: path,
+      file_url: pub.publicUrl,
+      file_size: file.size,
+    });
+    if(dbErr){
+      console.error(dbErr);
+      await sb.storage.from(PRES_BUCKET).remove([path]);
+      fail('DB insert failed — run supabase-setup.sql');
+      continue;
+    }
+    statusEl.textContent = 'Uploaded ✓';
+    statusEl.style.color = 'var(--ft)';
+    added++;
+  }
+  if(added) await loadPresentations();
+  setTimeout(()=>{ listEl.innerHTML = ''; }, 6000);
+}
+
+async function loadPresentations(){
+  const list = document.getElementById('pres-list');
+  if(!presCache.length) list.innerHTML = `<div class="empty">Loading…</div>`;
+  const { data, error } = await sb.from(PRES_TABLE).select('*').order('title', { ascending: true });
+  if(error){
+    console.error(error);
+    list.innerHTML = `<div class="empty">Couldn't load presentations — run the presentations section of supabase-setup.sql</div>`;
+    return;
+  }
+  presCache = data || [];
+  renderPresentations();
+}
+
+function renderPresentations(){
+  const q = (document.getElementById('pres-search')?.value || "").toLowerCase();
+  const list = document.getElementById('pres-list');
+  const items = presCache.filter(p => !q || `${p.title} ${p.description||''} ${p.file_name}`.toLowerCase().includes(q));
+  if(!items.length){
+    list.innerHTML = `<div class="empty">${presCache.length ? 'No presentations match' : 'No presentations yet — add some above'}</div>`;
+    return;
+  }
+  list.innerHTML = items.map(p => {
+    const ext = ((p.file_name.match(/\.([^.]+)$/)||[])[1] || 'PPT').toUpperCase();
+    const viewUrl = 'https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(p.file_url);
+    return `
+    <div class="pres-item">
+      <div class="pres-icon">${escapeHtml(ext)}</div>
+      <div class="pres-main">
+        <div class="pres-title">${escapeHtml(p.title)}</div>
+        ${p.description ? `<div class="pres-desc">${escapeHtml(p.description)}</div>` : ''}
+        <div class="pres-meta">${escapeHtml(p.file_name)}${p.file_size ? ' · ' + formatSize(p.file_size) : ''} · added ${formatDate((p.created_at||'').slice(0,10))}</div>
+      </div>
+      <div class="pres-actions no-print">
+        <a class="btn btn-sm" href="${viewUrl}" target="_blank" rel="noopener">View</a>
+        <a class="btn btn-sm" href="${escapeHtml(p.file_url)}" download="${escapeHtml(p.file_name)}">Download</a>
+        <button class="btn btn-sm" onclick="editPresentation('${p.id}')">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deletePresentation('${p.id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function editPresentation(id){
+  const p = presCache.find(x => x.id === id);
+  if(!p) return;
+  const title = prompt('Presentation title:', p.title);
+  if(title === null) return;
+  const description = prompt('Short description (optional):', p.description || '');
+  if(description === null) return;
+  const { error } = await sb.from(PRES_TABLE).update({ title: title.trim() || p.title, description: description.trim() }).eq('id', id);
+  if(error){ console.error(error); alert('Update failed — check console'); return; }
+  loadPresentations();
+}
+
+async function deletePresentation(id){
+  const p = presCache.find(x => x.id === id);
+  if(!p) return;
+  if(!confirm(`Delete "${p.title}"? This can't be undone.`)) return;
+  const pin = prompt('Enter approval PIN to delete:');
+  if(pin === null) return;
+  if(pin !== APPROVAL_PIN){ alert('Incorrect PIN'); return; }
+  const { error } = await sb.from(PRES_TABLE).delete().eq('id', id);
+  if(error){ console.error(error); alert('Delete failed — check console'); return; }
+  await sb.storage.from(PRES_BUCKET).remove([p.storage_path]);
+  loadPresentations();
+}
+
+(function initDropZone(){
+  const dz = document.getElementById('drop-zone');
+  ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+  dz.addEventListener('drop', e => uploadPresentations(e.dataTransfer.files));
+})();
 
 // Init
 document.getElementById('mtg-date').valueAsDate = new Date();
