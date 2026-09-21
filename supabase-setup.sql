@@ -64,27 +64,11 @@ create policy "anon read near-miss pdfs" on storage.objects
   using (bucket_id = 'near-miss-attachments');
 
 -- ---------------------------------------------------------------
--- Presentations library (PowerPoint files)
+-- Presentations attached to each week's agenda (PowerPoint files)
+-- Files live in the 'presentations' bucket under <meeting_date>/...
 -- ---------------------------------------------------------------
-create table if not exists public.presentations (
-  id uuid primary key default gen_random_uuid(),
-  title text not null,
-  description text,
-  file_name text not null,
-  storage_path text not null,
-  file_url text not null,
-  file_size bigint,
-  created_at timestamptz not null default now()
-);
-
-alter table public.presentations enable row level security;
-
-drop policy if exists "anon full access" on public.presentations;
-create policy "anon full access" on public.presentations
-  for all
-  to anon
-  using (true)
-  with check (true);
+alter table public.safety_meetings
+  add column if not exists presentations jsonb not null default '[]'::jsonb;
 
 insert into storage.buckets (id, name, public)
 values ('presentations', 'presentations', true)
